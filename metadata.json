@@ -1,0 +1,8 @@
+{
+  "name": "SecurePass Concert",
+  "description": "Une application professionnelle de sécurité pour concerts permettant de scanner les codes QR des billets, de suivre l'affluence en temps réel et d'assister le personnel via une IA intelligente.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

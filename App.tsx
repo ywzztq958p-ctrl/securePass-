@@ -9,20 +9,16 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  MessageSquareCode
+  MessageSquareCode,
+  Ticket as TicketIcon
 } from 'lucide-react';
 import ScannerView from './components/ScannerView';
 import DashboardView from './components/DashboardView';
 import HistoryView from './components/HistoryView';
 import SecurityAI from './components/SecurityAI';
 import EventsView from './components/EventsView';
+import TicketPrintView from './components/TicketPrintView';
 import { Ticket, ScanHistory, SecurityStats, Event } from './types';
-
-const MOCK_TICKETS: Record<string, Ticket> = {
-  "TKT-VIP-001": { id: "TKT-VIP-001", holderName: "Jean Dupont", type: "VIP", seat: "A12", status: "valid" },
-  "TKT-STD-054": { id: "TKT-STD-054", holderName: "Marie Curie", type: "Standard", seat: "B45", status: "valid" },
-  "TKT-VIP-002": { id: "TKT-VIP-002", holderName: "Paul Valéry", type: "VIP", seat: "A13", status: "valid" },
-};
 
 const INITIAL_EVENTS: Event[] = [
   { id: 'ev-1', name: 'Neon Pulse Festival', date: '2024-08-15', location: 'Stade de France', capacity: 50000, status: 'active', category: 'Electro' },
@@ -30,23 +26,36 @@ const INITIAL_EVENTS: Event[] = [
 ];
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'scan' | 'stats' | 'history' | 'ai' | 'events'>('events');
+  const [activeTab, setActiveTab] = useState<'scan' | 'stats' | 'history' | 'ai' | 'events' | 'print'>('events');
   const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS);
   const [activeEventId, setActiveEventId] = useState<string>('ev-1');
   const [scans, setScans] = useState<ScanHistory[]>([]);
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
+  const [printingEventId, setPrintingEventId] = useState<string | null>(null);
 
   const activeEvent = useMemo(() => 
     events.find(e => e.id === activeEventId) || events[0], 
   [events, activeEventId]);
 
+  // Unified tickets map for the scanner
+  const ticketsMap = useMemo(() => {
+    const map: Record<string, Ticket> = {};
+    allTickets.forEach(t => {
+      map[t.qrData] = t;
+    });
+    // Add old mocks for backward compatibility if needed
+    map["TKT-VIP-001"] = { id: "TKT-VIP-001", eventId: 'ev-1', holderName: "Jean Dupont", type: "VIP", seat: "A12", status: "valid", qrData: "TKT-VIP-001" };
+    map["TKT-STD-054"] = { id: "TKT-STD-054", eventId: 'ev-1', holderName: "Marie Curie", type: "Standard", seat: "B45", status: "valid", qrData: "TKT-STD-054" };
+    return map;
+  }, [allTickets]);
+
   const stats = useMemo<SecurityStats>(() => {
     const eventScans = scans.filter(s => s.eventId === activeEventId);
     const successfulScans = eventScans.filter(s => s.status === 'success');
     
-    // For the demo, we check types by looking at our mock map
     let vipCount = 0;
     successfulScans.forEach(s => {
-      if (MOCK_TICKETS[s.ticketId]?.type === 'VIP') vipCount++;
+      if (ticketsMap[s.ticketId]?.type === 'VIP') vipCount++;
     });
 
     return {
@@ -55,11 +64,11 @@ const App: React.FC = () => {
       vipCount: vipCount,
       anomalies: eventScans.filter(s => s.status !== 'success').length
     };
-  }, [scans, activeEventId, activeEvent]);
+  }, [scans, activeEventId, activeEvent, ticketsMap]);
 
   const handleScanSuccess = useCallback((qrData: string) => {
     const timestamp = new Date().toLocaleTimeString('fr-FR');
-    const ticket = MOCK_TICKETS[qrData];
+    const ticket = ticketsMap[qrData];
 
     if (!ticket) {
       const newScan: ScanHistory = {
@@ -72,6 +81,19 @@ const App: React.FC = () => {
       };
       setScans(prev => [newScan, ...prev]);
       return { success: false, message: "BILLET INVALIDE" };
+    }
+
+    if (ticket.eventId !== activeEventId) {
+      const newScan: ScanHistory = {
+        id: Math.random().toString(36).substr(2, 9),
+        eventId: activeEventId,
+        timestamp,
+        ticketId: qrData,
+        status: 'error',
+        message: "Billet pour un autre événement"
+      };
+      setScans(prev => [newScan, ...prev]);
+      return { success: false, message: "MAUVAIS ÉVÉNEMENT" };
     }
 
     const alreadyScanned = scans.find(s => s.eventId === activeEventId && s.ticketId === qrData && s.status === 'success');
@@ -101,22 +123,48 @@ const App: React.FC = () => {
     setScans(prev => [newScan, ...prev]);
 
     return { success: true, message: "VALIDE", ticket };
-  }, [scans, activeEventId]);
+  }, [scans, activeEventId, ticketsMap]);
 
-  const addEvent = (newEvent: Omit<Event, 'id' | 'status'>) => {
+  const addEvent = (newEvent: Omit<Event, 'id' | 'status'>, numTickets: number) => {
+    const eId = `ev-${Math.random().toString(36).substr(2, 5)}`;
     const event: Event = {
       ...newEvent,
-      id: `ev-${Math.random().toString(36).substr(2, 5)}`,
+      id: eId,
       status: 'upcoming'
     };
+    
+    // Auto-generate tickets
+    const generated: Ticket[] = [];
+    for(let i=1; i <= numTickets; i++) {
+      const tId = `TKT-${eId.toUpperCase()}-${String(i).padStart(3, '0')}`;
+      generated.push({
+        id: tId,
+        eventId: eId,
+        holderName: `Client #${i}`,
+        type: i % 5 === 0 ? 'VIP' : 'Standard',
+        seat: `Rang ${Math.ceil(i/20)} - Place ${i%20 + 1}`,
+        status: 'valid',
+        qrData: tId
+      });
+    }
+
     setEvents(prev => [...prev, event]);
+    setAllTickets(prev => [...prev, ...generated]);
     setActiveTab('events');
+    
+    // Notify user
+    alert(`${numTickets} billets générés avec succès pour ${event.name}`);
+  };
+
+  const openPrintView = (eventId: string) => {
+    setPrintingEventId(eventId);
+    setActiveTab('print');
   };
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
-      {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center shrink-0">
+      {/* Header (Hidden during print) */}
+      <header className="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center shrink-0 print:hidden">
         <div className="flex items-center gap-2">
           <div className="bg-emerald-500/20 p-2 rounded-lg">
             <ShieldAlert className="text-emerald-400 w-6 h-6" />
@@ -135,23 +183,31 @@ const App: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
+      <main className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4 print:p-0 print:overflow-visible">
         {activeTab === 'events' && (
           <EventsView 
             events={events} 
             activeEventId={activeEventId} 
             onSelect={setActiveEventId} 
-            onCreate={addEvent} 
+            onCreate={addEvent}
+            onPrint={openPrintView}
           />
         )}
         {activeTab === 'scan' && <ScannerView onScan={handleScanSuccess} eventName={activeEvent.name} />}
         {activeTab === 'stats' && <DashboardView stats={stats} scans={scans.filter(s => s.eventId === activeEventId)} />}
         {activeTab === 'history' && <HistoryView scans={scans.filter(s => s.eventId === activeEventId)} />}
         {activeTab === 'ai' && <SecurityAI stats={stats} />}
+        {activeTab === 'print' && printingEventId && (
+          <TicketPrintView 
+            event={events.find(e => e.id === printingEventId)!} 
+            tickets={allTickets.filter(t => t.eventId === printingEventId)}
+            onBack={() => setActiveTab('events')}
+          />
+        )}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 w-full bg-slate-900 border-t border-slate-800 flex justify-around p-3 safe-bottom z-50">
+      {/* Bottom Navigation (Hidden during print) */}
+      <nav className="fixed bottom-0 w-full bg-slate-900 border-t border-slate-800 flex justify-around p-3 safe-bottom z-50 print:hidden">
         <NavButton 
           active={activeTab === 'events'} 
           onClick={() => setActiveTab('events')} 
@@ -174,7 +230,7 @@ const App: React.FC = () => {
           active={activeTab === 'history'} 
           onClick={() => setActiveTab('history')} 
           icon={<History className="w-6 h-6" />} 
-          label="Historique" 
+          label="Journal" 
         />
         <NavButton 
           active={activeTab === 'ai'} 

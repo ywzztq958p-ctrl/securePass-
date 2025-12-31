@@ -11,11 +11,13 @@ export interface Event {
 
 export interface Ticket {
   id: string;
+  eventId: string;
   holderName: string;
   type: 'VIP' | 'Standard' | 'Backstage';
   seat: string;
   scannedAt?: string;
   status: 'valid' | 'invalid' | 'already_scanned';
+  qrData: string; // The data contained in the QR code
 }
 
 export interface ScanHistory {

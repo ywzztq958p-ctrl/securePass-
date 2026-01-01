@@ -1,13 +1,12 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Camera, CheckCircle2, XCircle, AlertTriangle, RefreshCcw, Keyboard, Send } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface ScannerViewProps {
   onScan: (data: string) => { success: boolean; message: string; holder?: string; ticket?: any };
   eventName: string;
 }
-
-declare const Html5QrcodeScanner: any;
 
 const ScannerView: React.FC<ScannerViewProps> = ({ onScan, eventName }) => {
   const [result, setResult] = useState<{ status: 'idle' | 'success' | 'error' | 'warning', message: string, holder?: string } | null>(null);
@@ -16,16 +15,17 @@ const ScannerView: React.FC<ScannerViewProps> = ({ onScan, eventName }) => {
   const scannerRef = useRef<any>(null);
 
   useEffect(() => {
+    // Initialisation via le module importé
     const scanner = new Html5QrcodeScanner("reader", { 
       fps: 10, 
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0
-    });
+    }, false);
 
     scanner.render((decodedText: string) => {
       processScan(decodedText);
     }, (error: any) => {
-      // Non-critical scanning errors
+      // Erreurs non critiques de lecture
     });
 
     scannerRef.current = scanner;

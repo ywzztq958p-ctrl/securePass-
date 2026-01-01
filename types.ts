@@ -17,7 +17,7 @@ export interface Ticket {
   seat: string;
   scannedAt?: string;
   status: 'valid' | 'invalid' | 'already_scanned';
-  qrData: string; // The data contained in the QR code
+  qrData: string;
 }
 
 export interface ScanHistory {

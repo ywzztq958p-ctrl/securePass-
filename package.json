@@ -11,9 +11,6 @@
     "html5-qrcode": "^2.3.8",
     "@google/genai": "^1.2.0"
   },
-  "overrides": {
-    "node-domexception": "npm:empty-package"
-  },
   "engines": {
     "node": ">=18.0.0"
   }

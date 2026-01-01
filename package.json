@@ -2,14 +2,23 @@
 {
   "name": "securepass-concert",
   "version": "1.0.0",
-  "description": "Application de sécurité pour concert",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "lucide-react": "^0.400.0",
-    "recharts": "^2.12.0",
+    "lucide-react": "^0.562.0",
+    "recharts": "^2.13.0",
     "html5-qrcode": "^2.3.8",
-    "@google/genai": "^1.2.0"
+    "@google/genai": "^1.34.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "@vitejs/plugin-react": "^4.3.0"
   },
   "engines": {
     "node": ">=18.0.0"
